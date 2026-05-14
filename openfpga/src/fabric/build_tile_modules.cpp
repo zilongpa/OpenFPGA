@@ -1659,7 +1659,7 @@ static int build_tile_module_ports_and_nets(
   }
   /* Get the submodule of connection blocks one by one, build connections
    * between cb and pb */
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     for (size_t icb = 0;
          icb < fabric_tile.cb_coordinates(fabric_tile_id, cb_type).size();
          ++icb) {
@@ -1724,7 +1724,7 @@ static int build_tile_module_ports_and_nets(
   }
   /* Get the submodule of connection blocks one by one, build connections
    * between cb and pb */
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     for (size_t icb = 0;
          icb < fabric_tile.cb_coordinates(fabric_tile_id, cb_type).size();
          ++icb) {
@@ -1826,7 +1826,7 @@ static int build_tile_module(
   /* Add instance of connection blocks */
   std::map<e_rr_type, std::vector<size_t>>
     cb_instances; /* Keep tracking the instance id of each cb */
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     for (vtr::Point<size_t> cb_coord :
          fabric_tile.cb_coordinates(fabric_tile_id, cb_type)) {
       /* get the unique module coord */

@@ -1012,7 +1012,7 @@ static int add_top_module_nets_around_one_tile(
   }
   /* Get the submodule of connection blocks one by one, build connections
    * between cb and pb */
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     for (size_t icb = 0;
          icb < fabric_tile.cb_coordinates(curr_fabric_tile_id, cb_type).size();
          ++icb) {
@@ -1165,7 +1165,11 @@ static ModulePinInfo find_tile_module_chan_port(
   /* Generate the input port object */
   switch (rr_graph.node_type(chan_rr_node)) {
     case e_rr_type::CHANX:
-    case e_rr_type::CHANY: {
+    case e_rr_type::CHANY:
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+#endif
+    {
       /* Create port description for the routing track middle output */
       int chan_node_track_id =
         rr_gsb.get_cb_chan_node_index(cb_type, chan_rr_node);
@@ -1191,7 +1195,8 @@ static ModulePinInfo find_tile_module_chan_port(
     }
     default: /* OPIN, SOURCE, IPIN, SINK are invalid*/
       VTR_LOGF_ERROR(__FILE__, __LINE__,
-                     "Invalid rr_node type! Should be [OPIN|CHANX|CHANY].\n");
+                     "Invalid rr_node type! Should be [OPIN|%s].\n",
+                     openfpga_rr_graph_chan_type_names().c_str());
       exit(1);
   }
 

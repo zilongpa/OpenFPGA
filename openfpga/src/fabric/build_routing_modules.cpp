@@ -60,7 +60,11 @@ static void build_switch_block_module_short_interc(
       break;
     }
     case e_rr_type::CHANX:
-    case e_rr_type::CHANY: {
+    case e_rr_type::CHANY:
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+#endif
+    {
       /* This should be an input in the data structure of RRGSB */
       if (cur_rr_node == drive_rr_node) {
         /* To be strict, the input should locate on the opposite side.
@@ -77,7 +81,8 @@ static void build_switch_block_module_short_interc(
     }
     default: /* SOURCE, IPIN, SINK are invalid*/
       VTR_LOGF_ERROR(__FILE__, __LINE__,
-                     "Invalid rr_node type! Should be [OPIN|CHANX|CHANY].\n");
+                     "Invalid rr_node type! Should be [OPIN|%s].\n",
+                     openfpga_rr_graph_chan_type_names().c_str());
       exit(1);
   }
   /* Find the name of input port */
@@ -114,8 +119,7 @@ static void build_switch_block_mux_module(
   const std::map<ModulePinInfo, ModuleNetId>& input_port_to_module_nets,
   const bool& group_config_block) {
   /* Check current rr_node is CHANX or CHANY*/
-  VTR_ASSERT((e_rr_type::CHANX == rr_graph.node_type(cur_rr_node)) ||
-             (e_rr_type::CHANY == rr_graph.node_type(cur_rr_node)));
+  VTR_ASSERT(is_openfpga_rr_graph_chan_type(rr_graph.node_type(cur_rr_node)));
 
   /* Get the circuit model id of the routing multiplexer */
   CircuitModelId mux_model =
@@ -632,8 +636,8 @@ static void build_connection_block_module_short_interc(
     return;
   }
 
-  VTR_ASSERT((e_rr_type::CHANX == rr_graph.node_type(driver_rr_node)) ||
-             (e_rr_type::CHANY == rr_graph.node_type(driver_rr_node)));
+  VTR_ASSERT(
+    is_openfpga_rr_graph_chan_type(rr_graph.node_type(driver_rr_node)));
 
   /* Create port description for the routing track middle output */
   ModulePinInfo input_port_info = find_connection_block_module_chan_port(
@@ -1260,15 +1264,12 @@ void build_flatten_routing_modules(
     }
   }
 
-  build_flatten_connection_block_modules(
-    module_manager, decoder_lib, device_ctx, in_edges, device_annotation,
-    device_rr_gsb, circuit_lib, sram_orgz_type, sram_model, e_rr_type::CHANX,
-    group_config_block, verbose);
-
-  build_flatten_connection_block_modules(
-    module_manager, decoder_lib, device_ctx, in_edges, device_annotation,
-    device_rr_gsb, circuit_lib, sram_orgz_type, sram_model, e_rr_type::CHANY,
-    group_config_block, verbose);
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    build_flatten_connection_block_modules(
+      module_manager, decoder_lib, device_ctx, in_edges, device_annotation,
+      device_rr_gsb, circuit_lib, sram_orgz_type, sram_model, cb_type,
+      group_config_block, verbose);
+  }
 }
 
 /********************************************************************
@@ -1301,30 +1302,18 @@ void build_unique_routing_modules(
       device_rr_gsb, unique_mirror, group_config_block, verbose);
   }
 
-  /* Build unique X-direction connection block modules */
-  for (size_t icb = 0;
-       icb < device_rr_gsb.get_num_cb_unique_module(e_rr_type::CHANX); ++icb) {
-    const RRGSB& unique_mirror =
-      device_rr_gsb.get_cb_unique_module(e_rr_type::CHANX, icb);
+  /* Build unique connection block modules for each supported channel type */
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    for (size_t icb = 0; icb < device_rr_gsb.get_num_cb_unique_module(cb_type);
+         ++icb) {
+      const RRGSB& unique_mirror =
+        device_rr_gsb.get_cb_unique_module(cb_type, icb);
 
-    build_connection_block_module(
-      module_manager, decoder_lib, device_annotation, device_ctx.grid,
-      device_ctx.rr_graph, in_edges, circuit_lib, sram_orgz_type, sram_model,
-      device_rr_gsb, unique_mirror, e_rr_type::CHANX, group_config_block,
-      verbose);
-  }
-
-  /* Build unique X-direction connection block modules */
-  for (size_t icb = 0;
-       icb < device_rr_gsb.get_num_cb_unique_module(e_rr_type::CHANY); ++icb) {
-    const RRGSB& unique_mirror =
-      device_rr_gsb.get_cb_unique_module(e_rr_type::CHANY, icb);
-
-    build_connection_block_module(
-      module_manager, decoder_lib, device_annotation, device_ctx.grid,
-      device_ctx.rr_graph, in_edges, circuit_lib, sram_orgz_type, sram_model,
-      device_rr_gsb, unique_mirror, e_rr_type::CHANY, group_config_block,
-      verbose);
+      build_connection_block_module(
+        module_manager, decoder_lib, device_annotation, device_ctx.grid,
+        device_ctx.rr_graph, in_edges, circuit_lib, sram_orgz_type, sram_model,
+        device_rr_gsb, unique_mirror, cb_type, group_config_block, verbose);
+    }
   }
 }
 

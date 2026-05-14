@@ -111,6 +111,38 @@ bool is_ipin_direct_connected_opin(const RRGraphView& rr_graph,
   return true;
 }
 
+bool is_openfpga_rr_graph_chan_type(const e_rr_type& rr_type) {
+  switch (rr_type) {
+    case e_rr_type::CHANX:
+    case e_rr_type::CHANY:
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+#endif
+      return true;
+    default:
+      return false;
+  }
+}
+
+std::vector<e_rr_type> openfpga_rr_graph_chan_types() {
+  std::vector<e_rr_type> chan_types = {e_rr_type::CHANX, e_rr_type::CHANY};
+#if OPENFPGA_VTR_HAS_CHANZ
+  chan_types.push_back(e_rr_type::CHANZ);
+#endif
+  return chan_types;
+}
+
+std::string openfpga_rr_graph_chan_type_names() {
+  std::string names;
+  for (const e_rr_type& chan_type : openfpga_rr_graph_chan_types()) {
+    if (!names.empty()) {
+      names += "|";
+    }
+    names += rr_node_typename[chan_type];
+  }
+  return names;
+}
+
 e_side get_rr_graph_single_node_side(const RRGraphView& rr_graph,
                                      const RRNodeId node) {
   e_side node_side = NUM_2D_SIDES;
