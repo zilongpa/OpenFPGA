@@ -5,6 +5,7 @@
 
 #include "build_top_module_utils.h"
 #include "command_exit_codes.h"
+#include "openfpga_rr_graph_utils.h"
 #include "vtr_assert.h"
 #include "vtr_log.h"
 
@@ -48,6 +49,10 @@ std::vector<vtr::Point<size_t>> FabricTile::cb_coordinates(
       return cbx_coords_[tile_id];
     case e_rr_type::CHANY:
       return cby_coords_[tile_id];
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      return cbz_coords_[tile_id];
+#endif
     default:
       VTR_LOG("Invalid type of connection block!\n");
       exit(1);
@@ -160,6 +165,22 @@ FabricTileId FabricTile::find_tile_by_cb_coordinate(
       }
       return cby_coord2id_lookup_[coord.x()][coord.y()];
     }
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ: {
+      if (cbz_coord2id_lookup_.empty()) {
+        return FabricTileId::INVALID();
+      }
+      if (coord.x() >= cbz_coord2id_lookup_.size() ||
+          coord.y() >= cbz_coord2id_lookup_[coord.x()].size()) {
+        VTR_LOG_ERROR(
+          "Z-direction connection block coordinate [%lu][%lu] exceeds the "
+          "lookup range!\n",
+          coord.x(), coord.y());
+        return FabricTileId::INVALID();
+      }
+      return cbz_coord2id_lookup_[coord.x()][coord.y()];
+    }
+#endif
     default:
       VTR_LOG("Invalid type of connection block!\n");
       exit(1);
@@ -257,6 +278,12 @@ bool FabricTile::cb_in_tile(const FabricTileId& tile_id,
       return !cby_coords_[tile_id].empty() &&
              find_cb_index_in_tile(tile_id, cb_type, coord) !=
                cby_coords_[tile_id].size();
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      return !cbz_coords_[tile_id].empty() &&
+             find_cb_index_in_tile(tile_id, cb_type, coord) !=
+               cbz_coords_[tile_id].size();
+#endif
     default:
       VTR_LOG("Invalid type of connection block!\n");
       exit(1);
@@ -284,6 +311,16 @@ size_t FabricTile::find_cb_index_in_tile(
         }
       }
       return cby_coords_[tile_id].size();
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      for (size_t idx = 0; idx < cbz_coords_[tile_id].size(); ++idx) {
+        vtr::Point<size_t> curr_coord = cbz_coords_[tile_id][idx];
+        if (curr_coord == coord) {
+          return idx;
+        }
+      }
+      return cbz_coords_[tile_id].size();
+#endif
     default:
       VTR_LOG("Invalid type of connection block!\n");
       exit(1);
@@ -327,6 +364,9 @@ FabricTileId FabricTile::create_tile(const vtr::Point<size_t>& coord) {
   pb_gsb_coords_.emplace_back();
   cbx_coords_.emplace_back();
   cby_coords_.emplace_back();
+#if OPENFPGA_VTR_HAS_CHANZ
+  cbz_coords_.emplace_back();
+#endif
   sb_coords_.emplace_back();
 
   /* Register in fast look-up */
@@ -341,12 +381,18 @@ void FabricTile::init(const vtr::Point<size_t>& max_coord) {
   pb_coord2id_lookup_.resize(max_coord.x());
   cbx_coord2id_lookup_.resize(max_coord.x());
   cby_coord2id_lookup_.resize(max_coord.x());
+#if OPENFPGA_VTR_HAS_CHANZ
+  cbz_coord2id_lookup_.resize(max_coord.x());
+#endif
   sb_coord2id_lookup_.resize(max_coord.x());
   for (size_t ix = 0; ix < max_coord.x(); ++ix) {
     tile_coord2id_lookup_[ix].resize(max_coord.y(), FabricTileId::INVALID());
     pb_coord2id_lookup_[ix].resize(max_coord.y(), FabricTileId::INVALID());
     cbx_coord2id_lookup_[ix].resize(max_coord.y(), FabricTileId::INVALID());
     cby_coord2id_lookup_[ix].resize(max_coord.y(), FabricTileId::INVALID());
+#if OPENFPGA_VTR_HAS_CHANZ
+    cbz_coord2id_lookup_[ix].resize(max_coord.y(), FabricTileId::INVALID());
+#endif
     sb_coord2id_lookup_[ix].resize(max_coord.y(), FabricTileId::INVALID());
   }
   tile_coord2unique_tile_ids_.resize(max_coord.x());
@@ -470,6 +516,29 @@ bool FabricTile::register_cby_in_lookup(const FabricTileId& tile_id,
   return true;
 }
 
+#if OPENFPGA_VTR_HAS_CHANZ
+bool FabricTile::register_cbz_in_lookup(const FabricTileId& tile_id,
+                                        const vtr::Point<size_t>& coord) {
+  if (coord.x() >= cbz_coord2id_lookup_.size() ||
+      coord.y() >= cbz_coord2id_lookup_[coord.x()].size()) {
+    VTR_LOG_ERROR(
+      "Fast look-up has not been re-allocated properly for Z-direction "
+      "connection block [%lu][%lu]!\n",
+      coord.x(), coord.y());
+    return false;
+  }
+  if (cbz_coord2id_lookup_[coord.x()][coord.y()]) {
+    VTR_LOG_ERROR(
+      "Z-direction connection block at [%lu][%lu] has already been "
+      "registered!\n",
+      coord.x(), coord.y());
+    return false;
+  }
+  cbz_coord2id_lookup_[coord.x()][coord.y()] = tile_id;
+  return true;
+}
+#endif
+
 bool FabricTile::register_sb_in_lookup(const FabricTileId& tile_id,
                                        const vtr::Point<size_t>& coord) {
   if (coord.x() >= sb_coord2id_lookup_.size()) {
@@ -512,6 +581,12 @@ void FabricTile::invalidate_cbx_in_lookup(const vtr::Point<size_t>& coord) {
 void FabricTile::invalidate_cby_in_lookup(const vtr::Point<size_t>& coord) {
   cby_coord2id_lookup_[coord.x()][coord.y()] = FabricTileId::INVALID();
 }
+
+#if OPENFPGA_VTR_HAS_CHANZ
+void FabricTile::invalidate_cbz_in_lookup(const vtr::Point<size_t>& coord) {
+  cbz_coord2id_lookup_[coord.x()][coord.y()] = FabricTileId::INVALID();
+}
+#endif
 
 void FabricTile::invalidate_sb_in_lookup(const vtr::Point<size_t>& coord) {
   sb_coord2id_lookup_[coord.x()][coord.y()] = FabricTileId::INVALID();
@@ -588,6 +663,12 @@ int FabricTile::add_cb_coordinate(const FabricTileId& tile_id,
       cby_coords_[tile_id].push_back(coord);
       /* Register in fast look-up */
       return register_cby_in_lookup(tile_id, coord);
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      cbz_coords_[tile_id].push_back(coord);
+      /* Register in fast look-up */
+      return register_cbz_in_lookup(tile_id, coord);
+#endif
     default:
       VTR_LOG("Invalid type of connection block!\n");
       exit(1);
@@ -609,11 +690,17 @@ void FabricTile::clear() {
   pb_gsb_coords_.clear();
   cbx_coords_.clear();
   cby_coords_.clear();
+#if OPENFPGA_VTR_HAS_CHANZ
+  cbz_coords_.clear();
+#endif
   sb_coords_.clear();
   tile_coord2id_lookup_.clear();
   pb_coord2id_lookup_.clear();
   cbx_coord2id_lookup_.clear();
   cby_coord2id_lookup_.clear();
+#if OPENFPGA_VTR_HAS_CHANZ
+  cbz_coord2id_lookup_.clear();
+#endif
   sb_coord2id_lookup_.clear();
   tile_coord2unique_tile_ids_.clear();
   unique_tile_ids_.clear();
@@ -632,6 +719,9 @@ bool FabricTile::equivalent_tile(const FabricTileId& tile_a,
       pb_gsb_coords_[tile_a].size() != pb_gsb_coords_[tile_b].size() ||
       cbx_coords_[tile_a].size() != cbx_coords_[tile_b].size() ||
       cby_coords_[tile_a].size() != cby_coords_[tile_b].size() ||
+#if OPENFPGA_VTR_HAS_CHANZ
+      cbz_coords_[tile_a].size() != cbz_coords_[tile_b].size() ||
+#endif
       sb_coords_[tile_a].size() != sb_coords_[tile_b].size()) {
     return false;
   }
@@ -663,6 +753,16 @@ bool FabricTile::equivalent_tile(const FabricTileId& tile_a,
       return false;
     }
   }
+#if OPENFPGA_VTR_HAS_CHANZ
+  for (size_t iblk = 0; iblk < cbz_coords_[tile_a].size(); ++iblk) {
+    if (device_rr_gsb.get_cb_unique_module_index(e_rr_type::CHANZ,
+                                                 cbz_coords_[tile_a][iblk]) !=
+        device_rr_gsb.get_cb_unique_module_index(e_rr_type::CHANZ,
+                                                 cbz_coords_[tile_b][iblk])) {
+      return false;
+    }
+  }
+#endif
   for (size_t iblk = 0; iblk < sb_coords_[tile_a].size(); ++iblk) {
     if (device_rr_gsb.get_sb_unique_module_index(sb_coords_[tile_a][iblk]) !=
         device_rr_gsb.get_sb_unique_module_index(sb_coords_[tile_b][iblk])) {

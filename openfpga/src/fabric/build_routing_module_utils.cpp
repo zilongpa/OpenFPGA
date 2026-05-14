@@ -209,7 +209,11 @@ ModulePinInfo find_switch_block_module_input_port(
       break;
     }
     case e_rr_type::CHANX:
-    case e_rr_type::CHANY: {
+    case e_rr_type::CHANY:
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+#endif
+    {
       input_port = find_switch_block_module_chan_port(
         module_manager, sb_module, rr_graph, rr_gsb, input_side, input_rr_node,
         IN_PORT);
@@ -217,7 +221,8 @@ ModulePinInfo find_switch_block_module_input_port(
     }
     default: /* SOURCE, IPIN, SINK are invalid*/
       VTR_LOGF_ERROR(__FILE__, __LINE__,
-                     "Invalid rr_node type! Should be [OPIN|CHANX|CHANY].\n");
+                     "Invalid rr_node type! Should be [OPIN|%s].\n",
+                     openfpga_rr_graph_chan_type_names().c_str());
       exit(1);
   }
 
@@ -265,7 +270,11 @@ ModulePinInfo find_connection_block_module_chan_port(
   /* Generate the input port object */
   switch (rr_graph.node_type(chan_rr_node)) {
     case e_rr_type::CHANX:
-    case e_rr_type::CHANY: {
+    case e_rr_type::CHANY:
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+#endif
+    {
       /* Create port description for the routing track middle output */
       int chan_node_track_id =
         rr_gsb.get_cb_chan_node_index(cb_type, chan_rr_node);
@@ -282,7 +291,8 @@ ModulePinInfo find_connection_block_module_chan_port(
     }
     default: /* OPIN, SOURCE, IPIN, SINK are invalid*/
       VTR_LOGF_ERROR(__FILE__, __LINE__,
-                     "Invalid rr_node type! Should be [OPIN|CHANX|CHANY].\n");
+                     "Invalid rr_node type! Should be [OPIN|%s].\n",
+                     openfpga_rr_graph_chan_type_names().c_str());
       exit(1);
   }
 

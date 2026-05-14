@@ -6,6 +6,7 @@
 #include <array>
 #include <map>
 
+#include "openfpga_rr_graph_utils.h"
 #include "openfpga_tokenizer.h"
 #include "vtr_assert.h"
 #include "vtr_log.h"
@@ -19,7 +20,7 @@ namespace openfpga {
 RRGSBWriterOption::RRGSBWriterOption() {
   output_directory_.clear();
   unique_module_only_ = false;
-  exclude_content_ = {false, false, false, false};
+  exclude_content_ = {false, false, false, false, false};
   include_gsb_names_.clear();
   verbose_output_ = false;
   num_parse_errors_ = 0;
@@ -42,8 +43,16 @@ bool RRGSBWriterOption::include_cb_content(const e_rr_type& cb_type) const {
   if (cb_type == e_rr_type::CHANX) {
     return !exclude_content_[1];
   }
-  VTR_ASSERT(cb_type == e_rr_type::CHANY);
-  return !exclude_content_[2];
+  if (cb_type == e_rr_type::CHANY) {
+    return !exclude_content_[2];
+  }
+#if OPENFPGA_VTR_HAS_CHANZ
+  if (cb_type == e_rr_type::CHANZ) {
+    return !exclude_content_[4];
+  }
+#endif
+  VTR_ASSERT(is_openfpga_rr_graph_chan_type(cb_type));
+  return true;
 }
 
 bool RRGSBWriterOption::include_sb_content() const {
@@ -78,6 +87,9 @@ void RRGSBWriterOption::set_exclude_content(const std::string& content) {
   std::vector<std::string> tokens = tokenizer.split(',');
   /* Parse each token */
   std::map<std::string, int> token2index = {{"sb", 3}, {"cbx", 1}, {"cby", 2}};
+#if OPENFPGA_VTR_HAS_CHANZ
+  token2index["cbz"] = 4;
+#endif
   for (std::string token : tokens) {
     auto result = token2index.find(token);
     if (result == token2index.end()) {

@@ -20,6 +20,7 @@
 #include <map>
 #include <unordered_map>
 
+#include "openfpga_rr_graph_utils.h"
 #include "rr_graph_in_edges.h"
 #include "side_manager.h"
 #include "vpr_types.h"
@@ -203,7 +204,7 @@ void RRGSBEdges::sort_ipin_node_in_edges(const RRGSB& gsb,
                                          const RRGraphInEdges& in_edges) {
   ipin_node_in_edges_.resize(gsb.get_num_sides());
 
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     for (e_side ipin_side : gsb.get_cb_ipin_sides(cb_type)) {
       SideManager side_manager(ipin_side);
       ipin_node_in_edges_[size_t(ipin_side)].resize(
@@ -220,7 +221,7 @@ void RRGSBEdges::sort_ipin_node_in_edges(const RRGSB& gsb,
 void RRGSBEdges::build_cb_opin_nodes(const RRGSB& gsb,
                                      const RRGraphView& rr_graph,
                                      const RRGraphInEdges& in_edges) {
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     size_t icb_type = (cb_type == e_rr_type::CHANX) ? 0 : 1;
     for (e_side cb_ipin_side : gsb.get_cb_ipin_sides(cb_type)) {
       for (size_t inode = 0; inode < gsb.get_num_ipin_nodes(cb_ipin_side);
@@ -324,8 +325,7 @@ void RRGSBEdges::sort_chan_node_in_edges(const RRGSB& gsb,
     if (e_rr_type::OPIN == rr_graph.node_type(src_node)) {
       from_grid_edge_map[side][index] = edge;
     } else {
-      VTR_ASSERT((e_rr_type::CHANX == rr_graph.node_type(src_node)) ||
-                 (e_rr_type::CHANY == rr_graph.node_type(src_node)));
+      VTR_ASSERT(is_openfpga_rr_graph_chan_type(rr_graph.node_type(src_node)));
       from_track_edge_map[side][index] = edge;
     }
     edge_counter++;

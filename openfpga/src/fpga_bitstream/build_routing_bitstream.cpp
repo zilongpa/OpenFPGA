@@ -44,8 +44,7 @@ static void build_switch_block_mux_bitstream(
   const VprRoutingAnnotation& routing_annotation,
   const std::string& unused_mux_config, const bool& verbose) {
   /* Check current rr_node is CHANX or CHANY*/
-  VTR_ASSERT((e_rr_type::CHANX == rr_graph.node_type(cur_rr_node)) ||
-             (e_rr_type::CHANY == rr_graph.node_type(cur_rr_node)));
+  VTR_ASSERT(is_openfpga_rr_graph_chan_type(rr_graph.node_type(cur_rr_node)));
 
   /* Find the input size of the implementation of a routing multiplexer */
   size_t datapath_mux_size = drive_rr_nodes.size();
@@ -277,10 +276,8 @@ static void build_switch_block_bitstream(
     SideManager side_manager(side);
     for (size_t itrack = 0;
          itrack < rr_gsb.get_chan_width(side_manager.get_side()); ++itrack) {
-      VTR_ASSERT((e_rr_type::CHANX == rr_graph.node_type(rr_gsb.get_chan_node(
-                                        side_manager.get_side(), itrack))) ||
-                 (e_rr_type::CHANY == rr_graph.node_type(rr_gsb.get_chan_node(
-                                        side_manager.get_side(), itrack))));
+      VTR_ASSERT(is_openfpga_rr_graph_chan_type(rr_graph.node_type(
+        rr_gsb.get_chan_node(side_manager.get_side(), itrack))));
       /* Only output port indicates a routing multiplexer */
       if (OUT_PORT !=
           rr_gsb.get_chan_node_direction(side_manager.get_side(), itrack)) {

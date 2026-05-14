@@ -216,6 +216,14 @@ when read_unique_blocks command invoked */
                            of unique modules based on its connection. This is a
                            matrix [0..num_module] */
 
+#if OPENFPGA_VTR_HAS_CHANZ
+  std::vector<std::vector<size_t>>
+    cbz_unique_module_id_; /* A map from rr_gsb to its unique mirror */
+  std::vector<vtr::Point<size_t>>
+    cbz_unique_module_; /* Unique connection blocks for VTR 9 CHANZ resources.
+                         */
+#endif
+
   /* Cached data */
   const VprDeviceAnnotation& device_annotation_;
 };

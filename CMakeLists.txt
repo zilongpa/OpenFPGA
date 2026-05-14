@@ -299,6 +299,28 @@ separate_arguments(
 #
 add_subdirectory(vtr-verilog-to-routing)
 
+# VTR 9 adds 3D FPGA routing resources such as CHANZ.  Older VTR revisions do
+# not define the enum value, so detect it from the checked-out VTR headers and
+# let OpenFPGA code compile conditionally against either API.
+set(OPENFPGA_VTR_HAS_CHANZ OFF)
+file(GLOB_RECURSE OPENFPGA_VTR_RR_HEADERS
+     CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/vtr-verilog-to-routing/vpr/src/*.h"
+     "${CMAKE_CURRENT_SOURCE_DIR}/vtr-verilog-to-routing/libs/librrgraph/src/*.h")
+foreach(OPENFPGA_VTR_RR_HEADER ${OPENFPGA_VTR_RR_HEADERS})
+  file(READ "${OPENFPGA_VTR_RR_HEADER}" OPENFPGA_VTR_RR_HEADER_CONTENT)
+  if(OPENFPGA_VTR_RR_HEADER_CONTENT MATCHES "CHANZ")
+    set(OPENFPGA_VTR_HAS_CHANZ ON)
+    break()
+  endif()
+endforeach()
+if(OPENFPGA_VTR_HAS_CHANZ)
+  message(STATUS "OpenFPGA: enabling VTR CHANZ/3D routing support")
+  add_compile_definitions(OPENFPGA_VTR_HAS_CHANZ=1)
+else()
+  add_compile_definitions(OPENFPGA_VTR_HAS_CHANZ=0)
+endif()
+
 add_compile_options(${WARN_FLAGS}) #Add warn flags for VTR tools
 add_compile_options(${ADDITIONAL_FLAGS})
 link_libraries(${ADDITIONAL_FLAGS})

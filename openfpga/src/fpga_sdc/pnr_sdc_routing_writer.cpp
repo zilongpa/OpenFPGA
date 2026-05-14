@@ -57,8 +57,8 @@ static void print_pnr_sdc_constrain_sb_mux_timing(
   /* Validate file stream */
   valid_file_stream(fp);
 
-  VTR_ASSERT((e_rr_type::CHANX == rr_graph.node_type(output_rr_node)) ||
-             (e_rr_type::CHANY == rr_graph.node_type(output_rr_node)));
+  VTR_ASSERT(
+    is_openfpga_rr_graph_chan_type(rr_graph.node_type(output_rr_node)));
 
   /* Find the module port corresponding to the output rr_node */
   ModulePinInfo module_output_port = find_switch_block_module_chan_port(
@@ -579,52 +579,31 @@ void print_pnr_sdc_compact_routing_constrain_cb_timing(
 
   std::string root_path = module_manager.module_name(top_module);
 
-  /* Print SDC for unique X-direction connection block modules */
-  for (size_t icb = 0;
-       icb < device_rr_gsb.get_num_cb_unique_module(e_rr_type::CHANX); ++icb) {
-    const RRGSB& unique_mirror =
-      device_rr_gsb.get_cb_unique_module(e_rr_type::CHANX, icb);
+  /* Print SDC for unique connection block modules of each supported channel
+   * type */
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    for (size_t icb = 0; icb < device_rr_gsb.get_num_cb_unique_module(cb_type);
+         ++icb) {
+      const RRGSB& unique_mirror =
+        device_rr_gsb.get_cb_unique_module(cb_type, icb);
 
-    /* Find all the cb instance under this module
-     * Create a regular expression to include these instance names
-     */
-    vtr::Point<size_t> gsb_coordinate(unique_mirror.get_cb_x(e_rr_type::CHANX),
-                                      unique_mirror.get_cb_y(e_rr_type::CHANX));
-    std::string cb_module_name =
-      generate_connection_block_module_name(e_rr_type::CHANX, gsb_coordinate);
-    ModuleId cb_module = module_manager.find_module(cb_module_name);
-    VTR_ASSERT(true == module_manager.valid_module_id(cb_module));
+      /* Find all the cb instance under this module
+       * Create a regular expression to include these instance names
+       */
+      vtr::Point<size_t> gsb_coordinate(unique_mirror.get_cb_x(cb_type),
+                                        unique_mirror.get_cb_y(cb_type));
+      std::string cb_module_name =
+        generate_connection_block_module_name(cb_type, gsb_coordinate);
+      ModuleId cb_module = module_manager.find_module(cb_module_name);
+      VTR_ASSERT(true == module_manager.valid_module_id(cb_module));
 
-    std::string module_path = format_dir_path(root_path) + cb_module_name;
+      std::string module_path = format_dir_path(root_path) + cb_module_name;
 
-    print_pnr_sdc_constrain_cb_timing(
-      options, module_path, module_manager, device_annotation, grids, rr_graph,
-      in_edges, unique_mirror, device_rr_gsb.get_gsb_edges(gsb_coordinate),
-      e_rr_type::CHANX);
-  }
-
-  /* Print SDC for unique Y-direction connection block modules */
-  for (size_t icb = 0;
-       icb < device_rr_gsb.get_num_cb_unique_module(e_rr_type::CHANY); ++icb) {
-    const RRGSB& unique_mirror =
-      device_rr_gsb.get_cb_unique_module(e_rr_type::CHANY, icb);
-
-    /* Find all the cb instance under this module
-     * Create a regular expression to include these instance names
-     */
-    vtr::Point<size_t> gsb_coordinate(unique_mirror.get_cb_x(e_rr_type::CHANY),
-                                      unique_mirror.get_cb_y(e_rr_type::CHANY));
-    std::string cb_module_name =
-      generate_connection_block_module_name(e_rr_type::CHANY, gsb_coordinate);
-    ModuleId cb_module = module_manager.find_module(cb_module_name);
-    VTR_ASSERT(true == module_manager.valid_module_id(cb_module));
-
-    std::string module_path = format_dir_path(root_path) + cb_module_name;
-
-    print_pnr_sdc_constrain_cb_timing(
-      options, module_path, module_manager, device_annotation, grids, rr_graph,
-      in_edges, unique_mirror, device_rr_gsb.get_gsb_edges(gsb_coordinate),
-      e_rr_type::CHANY);
+      print_pnr_sdc_constrain_cb_timing(
+        options, module_path, module_manager, device_annotation, grids,
+        rr_graph, in_edges, unique_mirror,
+        device_rr_gsb.get_gsb_edges(gsb_coordinate), cb_type);
+    }
   }
 }
 

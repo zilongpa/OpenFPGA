@@ -6,6 +6,9 @@
  * data structure in the OpenFPGA context
  */
 
+#include <string>
+#include <vector>
+
 #include "vtr_geometry.h"
 
 /* Headers from vpr library */
@@ -67,5 +70,25 @@ bool is_ipin_direct_connected_opin(const RRGraphView& rr_graph,
  * Note that this function expect one valid side to be got. Otherwise, it will
  * fail!
  */
+
+/**
+ * @brief Return true when the RR type is one of the routing channel types
+ * supported by the VTR headers used to build OpenFPGA.
+ */
+bool is_openfpga_rr_graph_chan_type(const e_rr_type& rr_type);
+
+/**
+ * @brief Return all routing channel types supported by the current VTR API.
+ *
+ * VTR 9 adds CHANZ for 3D FPGA inter-layer channels.  The list remains CHANX
+ * and CHANY when OpenFPGA is built against older VTR revisions.
+ */
+std::vector<e_rr_type> openfpga_rr_graph_chan_types();
+
+/**
+ * @brief Human-readable list of supported routing channel type names.
+ */
+std::string openfpga_rr_graph_chan_type_names();
+
 e_side get_rr_graph_single_node_side(const RRGraphView& rr_graph,
                                      const RRNodeId node);

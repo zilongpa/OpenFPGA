@@ -12,6 +12,7 @@
 
 /* Include FPGA-Verilog header files*/
 #include "openfpga_naming.h"
+#include "openfpga_rr_graph_utils.h"
 #include "spice_constants.h"
 #include "spice_routing.h"
 #include "spice_subckt_writer.h"
@@ -322,26 +323,16 @@ void print_spice_unique_routing_modules(NetlistManager& netlist_manager,
       netlist_manager, module_manager, subckt_dir, unique_mirror);
   }
 
-  /* Build unique X-direction connection block modules */
-  for (size_t icb = 0;
-       icb < device_rr_gsb.get_num_cb_unique_module(e_rr_type::CHANX); ++icb) {
-    const RRGSB& unique_mirror =
-      device_rr_gsb.get_cb_unique_module(e_rr_type::CHANX, icb);
+  /* Build unique connection block modules for each supported channel type */
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    for (size_t icb = 0; icb < device_rr_gsb.get_num_cb_unique_module(cb_type);
+         ++icb) {
+      const RRGSB& unique_mirror =
+        device_rr_gsb.get_cb_unique_module(cb_type, icb);
 
-    print_spice_routing_connection_box_unique_module(
-      netlist_manager, module_manager, subckt_dir, unique_mirror,
-      e_rr_type::CHANX);
-  }
-
-  /* Build unique X-direction connection block modules */
-  for (size_t icb = 0;
-       icb < device_rr_gsb.get_num_cb_unique_module(e_rr_type::CHANY); ++icb) {
-    const RRGSB& unique_mirror =
-      device_rr_gsb.get_cb_unique_module(e_rr_type::CHANY, icb);
-
-    print_spice_routing_connection_box_unique_module(
-      netlist_manager, module_manager, subckt_dir, unique_mirror,
-      e_rr_type::CHANY);
+      print_spice_routing_connection_box_unique_module(
+        netlist_manager, module_manager, subckt_dir, unique_mirror, cb_type);
+    }
   }
 
   /*

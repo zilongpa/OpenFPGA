@@ -3,6 +3,7 @@
  ***********************************************************************/
 #include "device_rr_gsb.h"
 
+#include "openfpga_rr_graph_utils.h"
 #include "rr_gsb_utils.h"
 #include "vtr_assert.h"
 #include "vtr_log.h"
@@ -82,6 +83,10 @@ size_t DeviceRRGSB::get_num_cb_unique_module(const e_rr_type& cb_type) const {
       return cbx_unique_module_.size();
     case e_rr_type::CHANY:
       return cby_unique_module_.size();
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      return cbz_unique_module_.size();
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -245,6 +250,11 @@ const RRGSB& DeviceRRGSB::get_cb_unique_module(const e_rr_type& cb_type,
     case e_rr_type::CHANY:
       return rr_gsb_[cby_unique_module_[index].x()]
                     [cby_unique_module_[index].y()];
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      return rr_gsb_[cbz_unique_module_[index].x()]
+                    [cbz_unique_module_[index].y()];
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -299,11 +309,17 @@ void DeviceRRGSB::reserve_unique_modules() {
   sb_unique_module_id_.resize(rr_gsb_.size());
   cbx_unique_module_id_.resize(rr_gsb_.size());
   cby_unique_module_id_.resize(rr_gsb_.size());
+#if OPENFPGA_VTR_HAS_CHANZ
+  cbz_unique_module_id_.resize(rr_gsb_.size());
+#endif
 
   for (std::size_t i = 0; i < rr_gsb_.size(); ++i) {
     sb_unique_module_id_[i].resize(rr_gsb_[i].size());
     cbx_unique_module_id_[i].resize(rr_gsb_[i].size());
     cby_unique_module_id_[i].resize(rr_gsb_[i].size());
+#if OPENFPGA_VTR_HAS_CHANZ
+    cbz_unique_module_id_[i].resize(rr_gsb_[i].size());
+#endif
   }
 }
 
@@ -317,6 +333,9 @@ void DeviceRRGSB::resize_upon_need(const vtr::Point<size_t>& coordinate) {
 
     cbx_unique_module_id_.resize(coordinate.x() + 1);
     cby_unique_module_id_.resize(coordinate.x() + 1);
+#if OPENFPGA_VTR_HAS_CHANZ
+    cbz_unique_module_id_.resize(coordinate.x() + 1);
+#endif
   }
 
   if (coordinate.y() + 1 > rr_gsb_[coordinate.x()].size()) {
@@ -326,6 +345,9 @@ void DeviceRRGSB::resize_upon_need(const vtr::Point<size_t>& coordinate) {
 
     cbx_unique_module_id_[coordinate.x()].resize(coordinate.y() + 1);
     cby_unique_module_id_[coordinate.x()].resize(coordinate.y() + 1);
+#if OPENFPGA_VTR_HAS_CHANZ
+    cbz_unique_module_id_[coordinate.x()].resize(coordinate.y() + 1);
+#endif
   }
 }
 
@@ -375,9 +397,23 @@ void DeviceRRGSB::build_cb_unique_module(const RRGraphView& rr_graph,
       const RRGSBEdges& cand_edges = rr_gsb_edges_[ix][iy];
       for (size_t id = 0; id < get_num_cb_unique_module(cb_type); ++id) {
         const RRGSB& unique_module = get_cb_unique_module(cb_type, id);
-        const vtr::Point<size_t>& base_coord = (cb_type == e_rr_type::CHANX)
-                                                 ? cbx_unique_module_[id]
-                                                 : cby_unique_module_[id];
+        vtr::Point<size_t> base_coord;
+        switch (cb_type) {
+          case e_rr_type::CHANX:
+            base_coord = cbx_unique_module_[id];
+            break;
+          case e_rr_type::CHANY:
+            base_coord = cby_unique_module_[id];
+            break;
+#if OPENFPGA_VTR_HAS_CHANZ
+          case e_rr_type::CHANZ:
+            base_coord = cbz_unique_module_[id];
+            break;
+#endif
+          default:
+            VTR_LOG_ERROR("Invalid type of connection block!\n");
+            exit(1);
+        }
         const RRGSBEdges& base_edges =
           rr_gsb_edges_[base_coord.x()][base_coord.y()];
         if (true == is_cb_mirror(rr_graph, in_edges, device_annotation_,
@@ -477,7 +513,13 @@ void DeviceRRGSB::build_gsb_unique_module() {
                                   [gsb_unique_module_coordinate.y()]) &&
             (cby_unique_module_id_[ix][iy] ==
              cby_unique_module_id_[gsb_unique_module_coordinate.x()]
-                                  [gsb_unique_module_coordinate.y()])) {
+                                  [gsb_unique_module_coordinate.y()])
+#if OPENFPGA_VTR_HAS_CHANZ
+            && (cbz_unique_module_id_[ix][iy] ==
+                cbz_unique_module_id_[gsb_unique_module_coordinate.x()]
+                                     [gsb_unique_module_coordinate.y()])
+#endif
+        ) {
           /* This is a mirror, raise the flag and we finish */
           is_unique_module = false;
           /* Record the id of unique mirror */
@@ -500,8 +542,9 @@ void DeviceRRGSB::build_unique_module(const RRGraphView& rr_graph,
                                       const RRGraphInEdges& in_edges) {
   build_sb_unique_module(rr_graph, in_edges);
 
-  build_cb_unique_module(rr_graph, in_edges, e_rr_type::CHANX);
-  build_cb_unique_module(rr_graph, in_edges, e_rr_type::CHANY);
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    build_cb_unique_module(rr_graph, in_edges, cb_type);
+  }
 
   build_gsb_unique_module(); /*is_compressed_ flip inside
                                 build_gsb_unique_module*/
@@ -521,6 +564,11 @@ void DeviceRRGSB::add_cb_unique_module(const e_rr_type& cb_type,
     case e_rr_type::CHANY:
       cby_unique_module_.push_back(coordinate);
       return;
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      cbz_unique_module_.push_back(coordinate);
+      return;
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -540,6 +588,11 @@ void DeviceRRGSB::set_cb_unique_module_id(const e_rr_type& cb_type,
     case e_rr_type::CHANY:
       cby_unique_module_id_[x][y] = id;
       return;
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      cbz_unique_module_id_[x][y] = id;
+      return;
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -557,11 +610,10 @@ void DeviceRRGSB::clear() {
   clear_gsb_unique_module_id();
 
   /* clean unique module lists */
-  clear_cb_unique_module(e_rr_type::CHANX);
-  clear_cb_unique_module_id(e_rr_type::CHANX);
-
-  clear_cb_unique_module(e_rr_type::CHANY);
-  clear_cb_unique_module_id(e_rr_type::CHANY);
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    clear_cb_unique_module(cb_type);
+    clear_cb_unique_module_id(cb_type);
+  }
 
   clear_sb_unique_module();
   clear_sb_unique_module_id();
@@ -570,11 +622,10 @@ void DeviceRRGSB::clear() {
 
 void DeviceRRGSB::clear_unique_modules() {
   /* clean unique module lists */
-  clear_cb_unique_module(e_rr_type::CHANX);
-  clear_cb_unique_module_id(e_rr_type::CHANX);
-
-  clear_cb_unique_module(e_rr_type::CHANY);
-  clear_cb_unique_module_id(e_rr_type::CHANY);
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    clear_cb_unique_module(cb_type);
+    clear_cb_unique_module_id(cb_type);
+  }
 
   clear_sb_unique_module();
   clear_sb_unique_module_id();
@@ -616,6 +667,13 @@ void DeviceRRGSB::clear_cb_unique_module_id(const e_rr_type& cb_type) {
         cby_unique_module_id_[x].clear();
       }
       return;
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      for (size_t x = 0; x < rr_gsb_.size(); ++x) {
+        cbz_unique_module_id_[x].clear();
+      }
+      return;
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -643,6 +701,11 @@ void DeviceRRGSB::clear_cb_unique_module(const e_rr_type& cb_type) {
     case e_rr_type::CHANY:
       cby_unique_module_.clear();
       return;
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      cbz_unique_module_.clear();
+      return;
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -679,6 +742,10 @@ bool DeviceRRGSB::validate_cb_unique_module_index(const e_rr_type& cb_type,
       return (index < cbx_unique_module_.size());
     case e_rr_type::CHANY:
       return (index < cby_unique_module_.size());
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      return (index < cbz_unique_module_.size());
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);
@@ -688,7 +755,7 @@ bool DeviceRRGSB::validate_cb_unique_module_index(const e_rr_type& cb_type,
 }
 
 bool DeviceRRGSB::validate_cb_type(const e_rr_type& cb_type) const {
-  return ((e_rr_type::CHANX == cb_type) || (e_rr_type::CHANY == cb_type));
+  return is_openfpga_rr_graph_chan_type(cb_type);
 }
 
 size_t DeviceRRGSB::get_sb_unique_module_index(
@@ -714,6 +781,12 @@ size_t DeviceRRGSB::get_cb_unique_module_index(
       cb_unique_module_id =
         cby_unique_module_id_[coordinate.x()][coordinate.y()];
       break;
+#if OPENFPGA_VTR_HAS_CHANZ
+    case e_rr_type::CHANZ:
+      cb_unique_module_id =
+        cbz_unique_module_id_[coordinate.x()][coordinate.y()];
+      break;
+#endif
     default:
       VTR_LOG_ERROR("Invalid type of connection block!\n");
       exit(1);

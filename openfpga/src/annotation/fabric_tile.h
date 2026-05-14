@@ -151,6 +151,9 @@ class FabricTile {
   void invalidate_pb_in_lookup(const vtr::Point<size_t>& coord);
   void invalidate_cbx_in_lookup(const vtr::Point<size_t>& coord);
   void invalidate_cby_in_lookup(const vtr::Point<size_t>& coord);
+#if OPENFPGA_VTR_HAS_CHANZ
+  void invalidate_cbz_in_lookup(const vtr::Point<size_t>& coord);
+#endif
   void invalidate_sb_in_lookup(const vtr::Point<size_t>& coord);
   bool register_tile_in_lookup(const FabricTileId& tile_id,
                                const vtr::Point<size_t>& coord);
@@ -160,6 +163,10 @@ class FabricTile {
                               const vtr::Point<size_t>& coord);
   bool register_cby_in_lookup(const FabricTileId& tile_id,
                               const vtr::Point<size_t>& coord);
+#if OPENFPGA_VTR_HAS_CHANZ
+  bool register_cbz_in_lookup(const FabricTileId& tile_id,
+                              const vtr::Point<size_t>& coord);
+#endif
   bool register_sb_in_lookup(const FabricTileId& tile_id,
                              const vtr::Point<size_t>& coord);
 
@@ -178,12 +185,18 @@ class FabricTile {
   vtr::vector<FabricTileId, std::vector<vtr::Point<size_t>>> pb_gsb_coords_;
   vtr::vector<FabricTileId, std::vector<vtr::Point<size_t>>> cbx_coords_;
   vtr::vector<FabricTileId, std::vector<vtr::Point<size_t>>> cby_coords_;
+#if OPENFPGA_VTR_HAS_CHANZ
+  vtr::vector<FabricTileId, std::vector<vtr::Point<size_t>>> cbz_coords_;
+#endif
   vtr::vector<FabricTileId, std::vector<vtr::Point<size_t>>> sb_coords_;
   /* A few fast lookup to spot tile by coordinate of programmable blocks,
    * connection blocks and switch blocks */
   std::vector<std::vector<FabricTileId>> pb_coord2id_lookup_;
   std::vector<std::vector<FabricTileId>> cbx_coord2id_lookup_;
   std::vector<std::vector<FabricTileId>> cby_coord2id_lookup_;
+#if OPENFPGA_VTR_HAS_CHANZ
+  std::vector<std::vector<FabricTileId>> cbz_coord2id_lookup_;
+#endif
   std::vector<std::vector<FabricTileId>> sb_coord2id_lookup_;
   /* A fast lookup to spot tile by coordinate */
   std::vector<std::vector<FabricTileId>> tile_coord2id_lookup_;

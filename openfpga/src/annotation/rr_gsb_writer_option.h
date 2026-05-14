@@ -57,8 +57,9 @@ class RRGSBWriterOption {
    * 1 : cbx
    * 2 : cby
    * 3 : sb
+   * 4 : cbz (when VTR provides CHANZ)
    */
-  std::array<bool, 4> exclude_content_;
+  std::array<bool, 5> exclude_content_;
 
   std::vector<std::string> include_gsb_names_;
   bool verbose_output_;

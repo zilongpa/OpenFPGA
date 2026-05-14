@@ -16,6 +16,7 @@
 #include "fabric_key_writer.h"
 #include "globals.h"
 #include "openfpga_naming.h"
+#include "openfpga_rr_graph_utils.h"
 #include "read_csv_io_pin_table.h"
 #include "read_unique_blocks_bin.h"
 #include "read_unique_blocks_xml.h"
@@ -53,31 +54,18 @@ void compress_routing_hierarchy_template(T& openfpga_ctx,
     g_vpr_ctx.device().rr_graph, in_edges);
 
   /* Report the stats */
-  VTR_LOGV(
-    verbose_output,
-    "Detected %lu unique X-direction connection blocks from a total of %d "
-    "(compression rate=%.2f%)\n",
-    openfpga_ctx.device_rr_gsb().get_num_cb_unique_module(e_rr_type::CHANX),
-    find_device_rr_gsb_num_cb_modules(openfpga_ctx.device_rr_gsb(),
-                                      e_rr_type::CHANX),
-    100. * ((float)find_device_rr_gsb_num_cb_modules(
-              openfpga_ctx.device_rr_gsb(), e_rr_type::CHANX) /
-              (float)openfpga_ctx.device_rr_gsb().get_num_cb_unique_module(
-                e_rr_type::CHANX) -
-            1.));
-
-  VTR_LOGV(
-    verbose_output,
-    "Detected %lu unique Y-direction connection blocks from a total of %d "
-    "(compression rate=%.2f%)\n",
-    openfpga_ctx.device_rr_gsb().get_num_cb_unique_module(e_rr_type::CHANY),
-    find_device_rr_gsb_num_cb_modules(openfpga_ctx.device_rr_gsb(),
-                                      e_rr_type::CHANY),
-    100. * ((float)find_device_rr_gsb_num_cb_modules(
-              openfpga_ctx.device_rr_gsb(), e_rr_type::CHANY) /
-              (float)openfpga_ctx.device_rr_gsb().get_num_cb_unique_module(
-                e_rr_type::CHANY) -
-            1.));
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    const size_t num_unique_cb =
+      openfpga_ctx.device_rr_gsb().get_num_cb_unique_module(cb_type);
+    const size_t num_cb =
+      find_device_rr_gsb_num_cb_modules(openfpga_ctx.device_rr_gsb(), cb_type);
+    VTR_LOGV(
+      verbose_output,
+      "Detected %lu unique %s connection blocks from a total of %lu "
+      "(compression rate=%.2f%)\n",
+      num_unique_cb, rr_node_typename[cb_type], num_cb,
+      num_unique_cb ? 100. * ((float)num_cb / (float)num_unique_cb - 1.) : 0.);
+  }
 
   VTR_LOGV(
     verbose_output,

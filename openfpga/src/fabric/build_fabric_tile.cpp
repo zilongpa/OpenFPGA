@@ -17,6 +17,7 @@
 #include "build_fabric_tile.h"
 #include "openfpga_naming.h"
 #include "openfpga_reserved_words.h"
+#include "openfpga_rr_graph_utils.h"
 #include "vpr_utils.h"
 
 /* begin namespace openfpga */
@@ -152,7 +153,7 @@ static int build_fabric_tile_style_bottom_left(FabricTile& fabric_tile,
         continue;
       }
       const RRGSB& curr_rr_gsb = device_rr_gsb.get_gsb(curr_gsb_coord);
-      for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+      for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
         if (curr_rr_gsb.is_cb_exist(cb_type)) {
           fabric_tile.add_cb_coordinate(curr_tile_id, cb_type,
                                         curr_rr_gsb.get_sb_coordinate());
@@ -221,15 +222,21 @@ static int build_fabric_tile_style_top_left(FabricTile& fabric_tile,
         bool routing_exist = false;
         if (device_rr_gsb.is_gsb_exist(rr_graph, curr_gsb_coord)) {
           const RRGSB& routing_rr_gsb = device_rr_gsb.get_gsb(curr_gsb_coord);
-          if (routing_rr_gsb.is_cb_exist(e_rr_type::CHANY)) {
-            routing_exist = true;
+          for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+            if (routing_rr_gsb.is_cb_exist(cb_type)) {
+              routing_exist = true;
+            }
           }
         }
         if (device_rr_gsb.is_gsb_exist(rr_graph, neighbor_gsb_coord)) {
           const RRGSB& routing_rr_gsb =
             device_rr_gsb.get_gsb(neighbor_gsb_coord);
-          if (routing_rr_gsb.is_cb_exist(e_rr_type::CHANX) ||
-              device_rr_gsb.is_sb_exist(neighbor_gsb_coord)) {
+          for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+            if (routing_rr_gsb.is_cb_exist(cb_type)) {
+              routing_exist = true;
+            }
+          }
+          if (device_rr_gsb.is_sb_exist(neighbor_gsb_coord)) {
             routing_exist = true;
           }
         }

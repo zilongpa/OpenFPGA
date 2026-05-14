@@ -357,10 +357,12 @@ void write_device_rr_gsb_to_xml(
   vtr::Point<size_t> sb_range = device_rr_gsb.get_gsb_range();
 
   size_t sb_counter = 0;
-  std::map<e_rr_type, size_t> cb_counters = {{e_rr_type::CHANX, 0},
-                                             {e_rr_type::CHANY, 0}};
-  std::map<e_rr_type, std::string> cb_names = {
-    {e_rr_type::CHANX, "X-direction"}, {e_rr_type::CHANY, "Y-direction"}};
+  std::map<e_rr_type, size_t> cb_counters;
+  std::map<e_rr_type, std::string> cb_names;
+  for (const e_rr_type& cb_type : openfpga_rr_graph_chan_types()) {
+    cb_counters[cb_type] = 0;
+    cb_names[cb_type] = rr_node_typename[cb_type];
+  }
 
   std::vector<std::string> include_gsb_names = options.include_gsb_names();
 
@@ -384,7 +386,7 @@ void write_device_rr_gsb_to_xml(
       }
       sb_counter++;
     }
-    for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+    for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
       for (size_t igsb = 0;
            igsb < device_rr_gsb.get_num_cb_unique_module(cb_type); ++igsb) {
         const RRGSB& rr_gsb = device_rr_gsb.get_cb_unique_module(cb_type, igsb);
@@ -411,7 +413,7 @@ void write_device_rr_gsb_to_xml(
                                        in_edges, rr_gsb, gsb_edges, options);
           sb_counter++;
         }
-        for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+        for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
           if (options.include_cb_content(cb_type)) {
             write_rr_connection_block_to_xml(xml_dir_name, rr_graph, in_edges,
                                              rr_gsb, gsb_edges, cb_type,
@@ -425,7 +427,7 @@ void write_device_rr_gsb_to_xml(
 
   VTR_LOG("Output %lu Switch blocks to XML files under directory '%s'\n",
           sb_counter, xml_dir_name.c_str());
-  for (e_rr_type cb_type : {e_rr_type::CHANX, e_rr_type::CHANY}) {
+  for (e_rr_type cb_type : openfpga_rr_graph_chan_types()) {
     VTR_LOG(
       "Output %lu %s Connection blocks to XML files under directory '%s'\n",
       cb_counters[cb_type], cb_names[cb_type].c_str(), xml_dir_name.c_str());
